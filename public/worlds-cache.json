@@ -1,0 +1,48 @@
+{
+  "ocean": {
+    "sceneId": "ocean",
+    "displayName": "Stormy Ocean",
+    "prompt": "A stormy open ocean at night, heavy rain, dark choppy waves, low storm clouds, distant lightning illuminating the horizon, wet atmosphere, cinematic immersive environment, no people, no text",
+    "model": "marble-1.1",
+    "worldMarbleUrl": "https://marble.worldlabs.ai/world/1202a22a-ffb0-4c15-a3f5-c70b6a641589",
+    "spzUrl": "https://cdn.marble.worldlabs.ai/1202a22a-ffb0-4c15-a3f5-c70b6a641589/4d8db267-1962-4a6d-8082-b804a7ad16f1_ceramic_500k.spz",
+    "spzUrls": {
+      "500k": "https://cdn.marble.worldlabs.ai/1202a22a-ffb0-4c15-a3f5-c70b6a641589/4d8db267-1962-4a6d-8082-b804a7ad16f1_ceramic_500k.spz",
+      "100k": "https://cdn.marble.worldlabs.ai/1202a22a-ffb0-4c15-a3f5-c70b6a641589/68dc3d7d-830e-4184-8e8e-0a2960b46b3c_dust_100k.spz",
+      "150k": "https://cdn.marble.worldlabs.ai/1202a22a-ffb0-4c15-a3f5-c70b6a641589/a9376b9a-41cc-49f6-9213-929ac6a30d17_ceramic_150k.spz",
+      "full_res": "https://cdn.marble.worldlabs.ai/1202a22a-ffb0-4c15-a3f5-c70b6a641589/09724a9c-79e5-4cbc-b085-28860aea4b02_ceramic.spz"
+    },
+    "thumbnailUrl": "https://cdn.marble.worldlabs.ai/1202a22a-ffb0-4c15-a3f5-c70b6a641589/0598ce19-4985-4578-bc9f-0cd4a20ef059_sand_mpi/thumbnail.webp",
+    "panoUrl": "https://cdn.marble.worldlabs.ai/1202a22a-ffb0-4c15-a3f5-c70b6a641589/63003e07-ece1-40d9-806c-e33068c883b1_panos/rgb_0.png",
+    "caption": "The scene is a dramatic and immersive cinematic environment, capturing the raw power of a stormy open ocean at night. The overall tone is intense and foreboding, emphasizing the vastness and danger of the sea during a tempest. Dark, choppy waves dominate the foreground and midground, their crests intermittently illuminated by distant flashes of lightning that briefly pierce the low-hanging storm clouds on the horizon. The atmosphere is saturated with moisture, creating a palpable sense of heavy rain that obscures distant details and adds to the scene's oppressive mood. The ocean surface is a chaotic expanse of dark, turbulent water, with whitecaps forming and dissipating rapidly. The storm clouds are thick and heavy, completely covering the sky and allowing no moonlight to penetrate, intensifying the darkness. The lightning flashes are infrequent but powerful, momentarily revealing the immense scale of the ocean and the jagged edges of the cloud formations. ",
+    "semantics": {
+      "metric_scale_factor": 0.8834903240203857,
+      "ground_plane_offset": 1.1736040115356445
+    },
+    "generatedAt": "2026-11-11T03:22:20.327Z",
+    "worldId": "1202a22a-ffb0-4c15-a3f5-c70b6a641589"
+  },
+  "desert": {
+    "sceneId": "desert",
+    "displayName": "Desert",
+    "prompt": "An endless sun-baked desert of soft rolling dunes under a harsh bright sky, heat haze, sparse dry air, warm golden sand, cinematic immersive environment, no people, no text",
+    "model": "marble-1.1",
+    "worldMarbleUrl": "https://marble.worldlabs.ai/world/a0bf63ed-eff9-41d4-9652-26dad27eb2a1",
+    "spzUrl": "https://cdn.marble.worldlabs.ai/a0bf63ed-eff9-41d4-9652-26dad27eb2a1/bc73f64d-b61d-476b-97f6-484e9e4ee541_ceramic_500k.spz",
+    "spzUrls": {
+      "500k": "https://cdn.marble.worldlabs.ai/a0bf63ed-eff9-41d4-9652-26dad27eb2a1/bc73f64d-b61d-476b-97f6-484e9e4ee541_ceramic_500k.spz",
+      "100k": "https://cdn.marble.worldlabs.ai/a0bf63ed-eff9-41d4-9652-26dad27eb2a1/3132d337-3ade-472e-b8d4-9d593a413db9_dust_100k.spz",
+      "150k": "https://cdn.marble.worldlabs.ai/a0bf63ed-eff9-41d4-9652-26dad27eb2a1/095efbe6-cb75-46c9-aff8-4e8b2c843f43_ceramic_150k.spz",
+      "full_res": "https://cdn.marble.worldlabs.ai/a0bf63ed-eff9-41d4-9652-26dad27eb2a1/ed0991cf-fe2d-4a7c-9f04-a0a427943053_ceramic.spz"
+    },
+    "thumbnailUrl": "https://cdn.marble.worldlabs.ai/a0bf63ed-eff9-41d4-9652-26dad27eb2a1/6fae59b6-edd2-413d-86cb-506f3abd1e42_sand_mpi/thumbnail.webp",
+    "panoUrl": "https://cdn.marble.worldlabs.ai/a0bf63ed-eff9-41d4-9652-26dad27eb2a1/25fb844d-0431-4ba3-8fa5-652bfee57164_panos/rgb_0.png",
+    "caption": "The scene is a cinematic, immersive environment depicting an endless sun-baked desert, evoking a sense of vastness and isolation. The overall tone is harsh and bright, reflecting the intense heat and sparse, dry air. Soft, rolling dunes of warm golden sand stretch across the entire 360-degree vista, creating a fluid, undulating landscape. The sand exhibits subtle variations in color, from pale gold on the crests to deeper ochre in the shadows, indicating the sun's relentless presence. The texture of the sand is finely granulated, with delicate ripples formed by the wind. A harsh, bright sky dominates the upper hemisphere, a uniform, cloudless expanse of pale blue that gradually lightens towards the horizon. Heat haze shimmers faintly above the distant dunes, distorting the view and emphasizing the extreme temperatures. The horizon line is a soft, indistinct boundary where the pale sky meets the distant, hazy sand. There are no visible plants or rock formations, only the continuous, unbroken expanse of sand. The dunes vary in height and slope, some presenting gentle curves while others rise more steeply, creating a dynamic yet monotonous topography. ",
+    "semantics": {
+      "metric_scale_factor": 0.8489944338798523,
+      "ground_plane_offset": 1.092728614807129
+    },
+    "generatedAt": "2026-11-11T03:27:33.683Z",
+    "worldId": "a0bf63ed-eff9-41d4-9652-26dad27eb2a1"
+  }
+}

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>World Model Experiment</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="world"></canvas>
+      <div id="vignette" aria-hidden="true"></div>
+
+      <div id="hud">
+        <div class="hud-left">
+          <span class="brand">World Model</span>
+          <span id="scene-label" class="scene-label">Stormy Ocean</span>
+        </div>
+        <div class="hud-right">
+          <span id="xr-status" class="view-hint">XR: …</span>
+          <span id="wl-status" class="view-hint">Marble: procedural fallback</span>
+          <input
+            id="wl-api-key"
+            class="api-key-input"
+            type="password"
+            placeholder="wlt_… API key"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button type="button" id="generate-worlds" class="hud-btn">
+            Generate worlds
+          </button>
+          <button type="button" id="download-worlds-cache" class="hud-btn ghost">
+            Save cache
+          </button>
+          <span class="view-hint">drag look · scroll zoom · right-drag pan</span>
+          <label class="toggle">
+            <input type="checkbox" id="mouse-as-eye" checked />
+            <span>Mouse as eye</span>
+          </label>
+          <span id="gaze-status" class="gaze-status">tracking: mouse</span>
+        </div>
+      </div>
+
+      <div id="gaze-dot" aria-hidden="true"></div>
+      <div id="xr-hint" class="xr-hint" style="display: none" aria-hidden="true">
+        Left-click look (Esc unlock) · right-drag look · WASD move · Shift sprint · aim reticle at a section
+      </div>
+
+      <article id="story-panel" class="story-panel">
+        <header class="story-header">
+          <p class="kicker">A short voyage</p>
+          <h1>Between Water and Sand</h1>
+          <p class="lede">
+            Scroll slowly. The world around you follows where your eyes rest.
+          </p>
+        </header>
+
+        <section
+          class="story-scene"
+          data-scene="ocean"
+          id="scene-ocean"
+        >
+          <h2>I. The Storm</h2>
+          <p>
+            Rain arrives sideways. The deck lifts and drops, and salt finds every
+            seam in your coat. Somewhere under the black water, something large
+            moves without hurry.
+          </p>
+          <p>
+            Lightning sketches the horizon for a blink — then the dark closes
+            again, thicker than before. You grip the rail and wait for the next
+            flash to tell you where the sky ends.
+          </p>
+        </section>
+
+        <section
+          class="story-scene"
+          data-scene="desert"
+          id="scene-desert"
+        >
+          <h2>II. The Desert</h2>
+          <p>
+            Heat replaces the cold. The ocean is gone; only dunes remain, soft
+            and endless, breathing under a hard white sun. Your footprints fill
+            themselves in behind you.
+          </p>
+          <p>
+            A wind carries fine sand across the ridge like smoke. Far ahead, a
+            shimmer pretends to be water — the old mirage, still patient, still
+            lying.
+          </p>
+        </section>
+
+        <footer class="story-footer">
+          Look at either section to switch worlds. Toggle mouse-as-eye to test.
+        </footer>
+      </article>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
