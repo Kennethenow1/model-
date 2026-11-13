@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@iwer/devui": "^2.8.0",
+    "@mediapipe/tasks-vision": "^1.2.3",
     "@sparkjsdev/spark": "^2.4.0",
     "iwer": "^2.8.0",
     "three": "^0.180.0"

@@ -37,17 +37,82 @@ const client = createWorldLabsClient({
     null,
 });
 
-// IWER must install before any WebXR / renderer setup
+// Meta Immersive Web Emulator (IWER) must install before WebXR / renderer setup
 const iwer = await installIwer();
 if (xrStatus) {
   xrStatus.textContent = iwer.emulated
-    ? 'XR: IWER (Quest Pro + gaze)'
+    ? 'XR: Immersive Web Emulator'
     : 'XR: native headset';
 }
 
 const world = createWorld(canvas, panelEl, mountEl, {
   xrDevice: iwer.xrDevice,
+  devui: iwer.devui,
 });
+
+// Hide DevUI chrome until an XR session starts
+if (iwer.devui?.devUICanvas) iwer.devui.devUICanvas.style.display = 'none';
+if (iwer.devui?.devUIContainer) iwer.devui.devUIContainer.style.display = 'none';
+
+world.renderer.xr.addEventListener('sessionend', () => {
+  setPlayModeVisible(false);
+});
+
+const emulatorBtn = document.getElementById('emulator-btn');
+const playModeBtn = document.getElementById('play-mode-btn');
+
+function setPlayModeVisible(on) {
+  if (!playModeBtn) return;
+  playModeBtn.style.display = on && iwer.emulated ? 'block' : 'none';
+}
+
+playModeBtn?.addEventListener('click', () => {
+  try {
+    iwer.devui?.inputLayer?.lockPointer?.();
+    setPlayModeVisible(false);
+    setWlStatus('Mouse look on — WASD move · hands follow your view');
+  } catch (err) {
+    console.warn(err);
+    setWlStatus('Could not lock pointer — try the IWER play button');
+  }
+});
+
+document.addEventListener('pointerlockchange', () => {
+  const locked = !!document.pointerLockElement;
+  if (world.isImmersive?.() && iwer.emulated) {
+    setPlayModeVisible(!locked);
+  }
+});
+
+emulatorBtn?.addEventListener('click', async () => {
+  emulatorBtn.disabled = true;
+  try {
+    const on = await world.toggleImmersive();
+    if (on) {
+      setWlStatus(
+        iwer.emulated
+          ? 'Emulator on — click “mouse look + hands” then WASD to move'
+          : 'Native VR — aim gaze at a section to switch worlds'
+      );
+      setPlayModeVisible(!!iwer.emulated);
+    } else {
+      setWlStatus('Marble: desktop view');
+      setPlayModeVisible(false);
+    }
+  } catch (err) {
+    console.warn(err);
+    setWlStatus(err?.message || 'Could not start Immersive Web Emulator');
+    setPlayModeVisible(false);
+  } finally {
+    emulatorBtn.disabled = false;
+  }
+});
+
+// Hide the duplicate bottom ENTER VR when we have the HUD emulator CTA
+if (iwer.emulated) {
+  const vrBtn = document.getElementById('vr-button');
+  if (vrBtn) vrBtn.style.display = 'none';
+}
 
 function setWlStatus(text) {
   if (wlStatus) wlStatus.textContent = text;
@@ -97,15 +162,26 @@ const tracker = createGazeTracker({
   onSceneChange,
   gazeDot,
   statusEl: gazeStatus,
+  mouseToggle,
 });
 
 tracker.start();
 
+// Gaze / mouse gently steers the camera (heavy, slippery follow)
+world.setLookPointSource(() => tracker.getPoint());
+
 mouseToggle.addEventListener('change', async () => {
-  if (mouseToggle.checked) {
-    await tracker.setMode('mouse');
-  } else {
-    await tracker.setMode('webcam');
+  mouseToggle.disabled = true;
+  try {
+    if (mouseToggle.checked) {
+      await tracker.setMode('mouse');
+    } else {
+      await tracker.setMode('webcam');
+    }
+  } finally {
+    mouseToggle.disabled = false;
+    // Keep checkbox in sync with actual mode
+    mouseToggle.checked = tracker.getMode() === 'mouse';
   }
 });
 

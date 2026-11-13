@@ -23,6 +23,15 @@
         </div>
         <div class="hud-right">
           <span id="xr-status" class="view-hint">XR: …</span>
+          <button
+            type="button"
+            id="emulator-btn"
+            class="hud-btn emulator"
+            aria-pressed="false"
+            title="Open this Spark.js world in Meta’s Immersive Web Emulator (IWER) — no Quest required"
+          >
+            View in Immersive Web Emulator
+          </button>
           <span id="wl-status" class="view-hint">Marble: procedural fallback</span>
           <input
             id="wl-api-key"
@@ -44,13 +53,17 @@
             <span>Mouse as eye</span>
           </label>
           <span id="gaze-status" class="gaze-status">tracking: mouse</span>
+          <!-- Uncheck “Mouse as eye” to use webcam head tracking -->
         </div>
       </div>
 
       <div id="gaze-dot" aria-hidden="true"></div>
       <div id="xr-hint" class="xr-hint" style="display: none" aria-hidden="true">
-        Left-click look (Esc unlock) · right-drag look · WASD move · Shift sprint · aim reticle at a section
+        Lock pointer · mouse looks · WASD moves · hands follow · aim reticle at a section
       </div>
+      <button type="button" id="play-mode-btn" class="play-mode-btn" style="display: none">
+        Click for mouse look + hands
+      </button>
 
       <article id="story-panel" class="story-panel">
         <header class="story-header">
@@ -98,7 +111,7 @@
         </section>
 
         <footer class="story-footer">
-          Look at either section to switch worlds. Toggle mouse-as-eye to test.
+          Turn your head toward either section to switch worlds. Uncheck “Mouse as eye” and allow the camera.
         </footer>
       </article>
     </div>

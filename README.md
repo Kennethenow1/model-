@@ -40,12 +40,16 @@ Gaze still switches sections the same way; only the *background world* changes s
 
 The Vite proxy forwards `/api/worldlabs/*` → `https://api.worldlabs.ai/marble/v1/*` and injects your key so it is not hardcoded in client bundles.
 
-## VR / IWER
+## Meta Immersive Web Emulator (no Quest required)
 
-Desktop VR uses Meta’s IWER + DevUI (Quest Pro profile with gaze).
+This project runs on Meta’s **Immersive Web** path via **IWER** (Immersive Web Emulation Runtime) + DevUI — the same WebXR stack Quest Browser uses. Spark.js Marble worlds, gaze scene switching, and the story panel all work inside the emulator.
 
-1. **ENTER VR**
-2. Left-click to look, WASD to move, aim the orange reticle at a story section
+1. Click **View in Immersive Web Emulator** in the HUD (or **ENTER VR** on a real headset)
+2. Click **Play mode (lock pointer)** in the IWER overlay (top) — or click the transparent overlay canvas
+3. Mouse looks · **WASD** moves · **Shift** sprints · controller/hand gizmos follow
+4. Aim the orange reticle at a story section to switch Marble worlds
+
+IWER + DevUI install automatically when no native `immersive-vr` headset is present (Quest Pro profile so eye-gaze exists). The emulator starts at standing height facing the story panel.
 
 ## Desktop controls
 

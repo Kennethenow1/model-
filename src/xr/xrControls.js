@@ -2,10 +2,9 @@ import * as THREE from 'three';
 import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
 
 /**
- * Desktop VR controls for IWER + real-headset fallback:
- * - Click canvas to pointer-lock, mouse looks (updates emulated headset)
- * - WASD / arrow keys / thumbstick move the player rig
- * - Controllers get visible models
+ * XR player rig + visible controller models.
+ * When IWER/DevUI is present, DevUI owns mouse look / WASD / hand gizmos
+ * (manual mode). This module only moves the rig for native headsets.
  */
 export function createXrControls({ renderer, scene, camera, xrDevice }) {
   const player = new THREE.Group();
@@ -48,28 +47,18 @@ export function createXrControls({ renderer, scene, camera, xrDevice }) {
   let yaw = 0;
   let pitch = 0;
 
-  if (xrDevice) {
-    const q = xrDevice.quaternion;
-    euler.setFromQuaternion(
-      new THREE.Quaternion(q.x, q.y, q.z, q.w),
-      'YXZ'
-    );
-    yaw = euler.y;
-    pitch = euler.x;
-  }
+  // IWER path: DevUI drives the device — don't steal mouse/keyboard
+  const useDevUi = !!xrDevice;
 
   function applyLook(dx, dy) {
-    if (!xrDevice) return;
-    const sens = 0.0022;
+    if (useDevUi || !xrDevice) return;
+    const sens = 0.0024;
     yaw -= dx * sens;
     pitch -= dy * sens;
-    pitch = Math.max(-1.2, Math.min(1.2, pitch));
+    pitch = Math.max(-1.15, Math.min(1.15, pitch));
     euler.set(pitch, yaw, 0, 'YXZ');
     xrDevice.quaternion.setFromEuler(euler);
-    // Keep eye-gaze head-locked so looking = aiming the eye reticle
-    if (xrDevice.gaze) {
-      xrDevice.gaze.quaternion.set(0, 0, 0, 1);
-    }
+    if (xrDevice.gaze) xrDevice.gaze.quaternion.set(0, 0, 0, 1);
   }
 
   function isTypingTarget(el) {
@@ -79,36 +68,41 @@ export function createXrControls({ renderer, scene, camera, xrDevice }) {
       el.isContentEditable ||
       tag === 'INPUT' ||
       tag === 'TEXTAREA' ||
-      tag === 'SELECT'
+      tag === 'SELECT' ||
+      tag === 'BUTTON'
     );
   }
 
   function onKeyDown(e) {
-    if (!enabled) return;
+    if (!enabled || useDevUi) return;
     if (isTypingTarget(e.target) || isTypingTarget(document.activeElement)) return;
-    // Only prevent scroll when canvas / page body has focus in VR
-    if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+    if (
+      ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(
+        e.code
+      )
+    ) {
       e.preventDefault();
     }
     keys.add(e.code);
   }
+
   function onKeyUp(e) {
-    if (isTypingTarget(e.target) || isTypingTarget(document.activeElement)) return;
+    if (useDevUi) return;
     keys.delete(e.code);
   }
 
   function onMouseMove(e) {
-    if (!enabled || !xrDevice) return;
+    if (!enabled || useDevUi) return;
     if (pointerLocked || lookDragging) {
-      applyLook(e.movementX, e.movementY);
+      applyLook(e.movementX || 0, e.movementY || 0);
     }
   }
 
   function onPointerDown(e) {
-    if (!enabled) return;
-    // Left click: pointer lock for FPS look. Right / middle: drag look.
+    if (!enabled || useDevUi) return;
     if (e.button === 0) {
       renderer.domElement.requestPointerLock?.();
+      lookDragging = true;
     } else if (e.button === 2 || e.button === 1) {
       lookDragging = true;
       e.preventDefault();
@@ -116,15 +110,17 @@ export function createXrControls({ renderer, scene, camera, xrDevice }) {
   }
 
   function onPointerUp(e) {
+    if (e.button === 0 && !pointerLocked) lookDragging = false;
     if (e.button === 2 || e.button === 1) lookDragging = false;
   }
 
   function onContextMenu(e) {
-    if (enabled) e.preventDefault();
+    if (enabled && !useDevUi) e.preventDefault();
   }
 
   function onPointerLockChange() {
     pointerLocked = document.pointerLockElement === renderer.domElement;
+    if (!pointerLocked) lookDragging = false;
   }
 
   window.addEventListener('keydown', onKeyDown);
@@ -142,8 +138,7 @@ export function createXrControls({ renderer, scene, camera, xrDevice }) {
     let y = 0;
     for (const src of session.inputSources) {
       const pad = src.gamepad;
-      if (!pad || !pad.axes || pad.axes.length < 4) continue;
-      // xr-standard: axes 2,3 are thumbstick
+      if (!pad?.axes || pad.axes.length < 4) continue;
       x += pad.axes[2] || 0;
       y += pad.axes[3] || 0;
     }
@@ -152,7 +147,7 @@ export function createXrControls({ renderer, scene, camera, xrDevice }) {
   }
 
   function update(dt) {
-    if (!enabled) return;
+    if (!enabled || useDevUi) return;
 
     wish.set(0, 0, 0);
     if (keys.has('KeyW') || keys.has('ArrowUp')) wish.z -= 1;
@@ -164,37 +159,56 @@ export function createXrControls({ renderer, scene, camera, xrDevice }) {
     wish.x += stick.x;
     wish.z += stick.y;
 
-    if (wish.lengthSq() > 0) {
-      wish.normalize();
+    if (wish.lengthSq() === 0) return;
+    wish.normalize();
 
-      // Move relative to headset yaw (or player yaw)
-      let heading = yaw;
-      if (!xrDevice) {
-        const xrCam = renderer.xr.getCamera();
-        xrCam.getWorldDirection(forward);
-        heading = Math.atan2(-forward.x, -forward.z);
-      }
+    const xrCam = renderer.xr.getCamera();
+    xrCam.getWorldDirection(forward);
+    const heading = Math.atan2(-forward.x, -forward.z);
+    forward.set(-Math.sin(heading), 0, -Math.cos(heading));
+    right.set(Math.cos(heading), 0, -Math.sin(heading));
 
-      forward.set(-Math.sin(heading), 0, -Math.cos(heading));
-      right.set(Math.cos(heading), 0, -Math.sin(heading));
+    const speed = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 5.5 : 3.2;
+    player.position.addScaledVector(forward, -wish.z * speed * dt);
+    player.position.addScaledVector(right, wish.x * speed * dt);
+    player.position.y = 0;
+  }
 
-      const speed = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 4.5 : 2.4;
-      player.position.addScaledVector(forward, -wish.z * speed * dt);
-      player.position.addScaledVector(right, wish.x * speed * dt);
-      player.position.y = 0;
+  function resetToDesktopView({
+    position = new THREE.Vector3(0, 1.6, 0),
+    target = new THREE.Vector3(0, 1.7, -2.2),
+  } = {}) {
+    player.position.set(0, 0, 0);
+    player.quaternion.identity();
+
+    if (xrDevice) {
+      xrDevice.position.set(position.x, position.y, position.z);
+      const tmp = new THREE.PerspectiveCamera();
+      tmp.position.copy(position);
+      tmp.lookAt(target);
+      xrDevice.quaternion.set(
+        tmp.quaternion.x,
+        tmp.quaternion.y,
+        tmp.quaternion.z,
+        tmp.quaternion.w
+      );
+      euler.setFromQuaternion(tmp.quaternion, 'YXZ');
+      yaw = euler.y;
+      pitch = euler.x;
     }
   }
 
   function setEnabled(on) {
     enabled = on;
+    // Always leave IWER in manual mode so DevUI play mode / hands work
+    if (xrDevice) xrDevice.controlMode = 'manual';
     if (!on) {
       keys.clear();
       lookDragging = false;
       if (document.pointerLockElement === renderer.domElement) {
         document.exitPointerLock?.();
       }
-    } else {
-      // Focus canvas so WASD works immediately
+    } else if (!useDevUi) {
       renderer.domElement.tabIndex = 0;
       renderer.domElement.focus({ preventScroll: true });
     }
@@ -204,6 +218,8 @@ export function createXrControls({ renderer, scene, camera, xrDevice }) {
     player,
     update,
     setEnabled,
+    resetToDesktopView,
+    usesDevUi: () => useDevUi,
     isPointerLocked: () => pointerLocked,
     dispose() {
       setEnabled(false);

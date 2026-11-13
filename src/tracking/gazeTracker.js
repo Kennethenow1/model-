@@ -1,30 +1,47 @@
 /**
- * Gaze tracker with two modes:
- * - mouse: cursor position acts as the eye (for testing)
- * - webcam: experimental webcam eye approximation via face/nose proxy
- *
- * Both report a screen-space point and which story scene element is under it.
+ * Gaze tracker:
+ * - mouse: cursor as eye (testing)
+ * - webcam: head pose via MediaPipe FaceLandmarker (face landmarks → screen)
  */
+
+import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
+
+const WASM_CDN =
+  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm';
+const MODEL_URL =
+  'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+
+// MediaPipe face mesh indices
+const LM_LEFT_EYE = 33;
+const LM_RIGHT_EYE = 263;
+const LM_NOSE = 1;
+const LM_LEFT_IRIS = 468;
+const LM_RIGHT_IRIS = 473;
 
 export function createGazeTracker({
   sceneElements,
   onSceneChange,
   gazeDot,
   statusEl,
+  mouseToggle = null,
 }) {
   let mode = 'mouse'; // 'mouse' | 'webcam'
   let x = window.innerWidth / 2;
   let y = window.innerHeight / 2;
+  let smoothX = x;
+  let smoothY = y;
   let currentScene = null;
   let dwellScene = null;
   let dwellMs = 0;
   const DWELL_THRESHOLD_MS = 280;
 
   let video = null;
+  let preview = null;
   let stream = null;
-  let canvas = null;
-  let ctx = null;
-  let detector = null;
+  let landmarker = null;
+  let landmarkerLoading = null;
+  let detecting = false;
+  let lastVideoTime = -1;
   let rafId = null;
   let lastTs = performance.now();
 
@@ -32,21 +49,23 @@ export function createGazeTracker({
     if (statusEl) statusEl.textContent = text;
   }
 
+  function forceMouseToggle(on) {
+    if (mouseToggle) mouseToggle.checked = on;
+  }
+
   function updateDot() {
     if (!gazeDot) return;
-    gazeDot.style.left = `${x}px`;
-    gazeDot.style.top = `${y}px`;
+    gazeDot.style.left = `${smoothX}px`;
+    gazeDot.style.top = `${smoothY}px`;
     gazeDot.classList.add('visible');
   }
 
   function pickSceneAtPoint(px, py) {
-    // Prefer elementFromPoint so scrolling inside the panel still works.
     const el = document.elementFromPoint(px, py);
     if (!el) return null;
     const section = el.closest?.('[data-scene]');
     if (section?.dataset?.scene) return section.dataset.scene;
 
-    // Fallback: bounding-box hit test against story sections
     for (const sectionEl of sceneElements) {
       const r = sectionEl.getBoundingClientRect();
       if (px >= r.left && px <= r.right && py >= r.top && py <= r.bottom) {
@@ -87,37 +106,109 @@ export function createGazeTracker({
     if (mode !== 'mouse') return;
     x = e.clientX;
     y = e.clientY;
+    smoothX = x;
+    smoothY = y;
     updateDot();
   }
 
-  async function startWebcam() {
-    if (!('FaceDetector' in window)) {
-      setStatus('webcam unsupported — using mouse');
-      mode = 'mouse';
-      return false;
-    }
+  function stylePreview() {
+    if (!preview) return;
+    Object.assign(preview.style, {
+      position: 'fixed',
+      right: '12px',
+      bottom: '12px',
+      width: '160px',
+      height: '120px',
+      objectFit: 'cover',
+      borderRadius: '10px',
+      zIndex: '70',
+      transform: 'scaleX(-1)',
+      boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
+      opacity: '0.92',
+      pointerEvents: 'none',
+    });
+  }
+
+  async function ensureLandmarker() {
+    if (landmarker) return landmarker;
+    if (landmarkerLoading) return landmarkerLoading;
+
+    landmarkerLoading = (async () => {
+      setStatus('loading head tracker…');
+      const vision = await FilesetResolver.forVisionTasks(WASM_CDN);
+      landmarker = await FaceLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: MODEL_URL,
+          delegate: 'GPU',
+        },
+        runningMode: 'VIDEO',
+        numFaces: 1,
+        outputFaceBlendshapes: false,
+        outputFacialTransformationMatrixes: false,
+      });
+      return landmarker;
+    })().catch(async (err) => {
+      console.warn('FaceLandmarker GPU failed, trying CPU', err);
+      const vision = await FilesetResolver.forVisionTasks(WASM_CDN);
+      landmarker = await FaceLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: MODEL_URL,
+          delegate: 'CPU',
+        },
+        runningMode: 'VIDEO',
+        numFaces: 1,
+      });
+      return landmarker;
+    });
 
     try {
+      return await landmarkerLoading;
+    } finally {
+      landmarkerLoading = null;
+    }
+  }
+
+  async function startWebcam() {
+    try {
+      await ensureLandmarker();
+
+      setStatus('requesting camera…');
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 640, height: 480 },
+        video: {
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        },
         audio: false,
       });
+
       video = document.createElement('video');
       video.srcObject = stream;
-      video.playsInline = true;
+      video.setAttribute('playsinline', 'true');
       video.muted = true;
       await video.play();
 
-      canvas = document.createElement('canvas');
-      canvas.width = 320;
-      canvas.height = 240;
-      ctx = canvas.getContext('2d', { willReadFrequently: true });
-      detector = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
-      setStatus('tracking: webcam');
+      preview = document.createElement('video');
+      preview.srcObject = stream;
+      preview.muted = true;
+      preview.playsInline = true;
+      preview.setAttribute('playsinline', 'true');
+      preview.id = 'head-track-preview';
+      document.body.appendChild(preview);
+      stylePreview();
+      await preview.play().catch(() => {});
+
+      setStatus('tracking: head — turn toward a section');
       return true;
-    } catch {
-      setStatus('camera blocked — using mouse');
+    } catch (err) {
+      console.warn('Head tracking failed', err);
+      const msg =
+        err?.name === 'NotAllowedError'
+          ? 'camera blocked — using mouse'
+          : `head failed: ${(err?.message || String(err)).slice(0, 48)}`;
+      setStatus(msg);
       mode = 'mouse';
+      forceMouseToggle(true);
       stopWebcam();
       return false;
     }
@@ -128,27 +219,62 @@ export function createGazeTracker({
       for (const track of stream.getTracks()) track.stop();
       stream = null;
     }
+    preview?.remove();
+    preview = null;
     video = null;
-    canvas = null;
-    ctx = null;
-    detector = null;
+    detecting = false;
+    lastVideoTime = -1;
   }
 
-  async function sampleWebcam() {
-    if (!video || !ctx || !detector || video.readyState < 2) return;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  function landmarkPoint(lm, index) {
+    const p = lm[index];
+    if (!p) return null;
+    return { x: p.x, y: p.y };
+  }
+
+  function sampleWebcam() {
+    if (!video || !landmarker || detecting) return;
+    if (video.readyState < 2) return;
+
+    const t = video.currentTime;
+    if (t === lastVideoTime) return;
+    lastVideoTime = t;
+
+    detecting = true;
     try {
-      const faces = await detector.detect(canvas);
-      if (!faces.length) return;
-      const box = faces[0].boundingBox;
-      // Map face center to screen. Mirror X because selfie cameras are mirrored.
-      const nx = 1 - (box.x + box.width / 2) / canvas.width;
-      const ny = (box.y + box.height * 0.4) / canvas.height;
-      x = nx * window.innerWidth;
+      const result = landmarker.detectForVideo(video, performance.now());
+      const faces = result?.faceLandmarks;
+      if (!faces?.length) {
+        detecting = false;
+        return;
+      }
+
+      const lm = faces[0];
+      const leftEye =
+        landmarkPoint(lm, LM_LEFT_IRIS) || landmarkPoint(lm, LM_LEFT_EYE);
+      const rightEye =
+        landmarkPoint(lm, LM_RIGHT_IRIS) || landmarkPoint(lm, LM_RIGHT_EYE);
+      const nose = landmarkPoint(lm, LM_NOSE);
+      if (!leftEye || !rightEye) {
+        detecting = false;
+        return;
+      }
+
+      // Midpoint between eyes, nudged by nose for head pitch
+      let nx = (leftEye.x + rightEye.x) * 0.5;
+      let ny = (leftEye.y + rightEye.y) * 0.5;
+      if (nose) {
+        nx = nx * 0.75 + nose.x * 0.25;
+        ny = ny * 0.65 + nose.y * 0.35;
+      }
+
+      // Selfie cam is mirrored — flip X so looking left aims left on screen
+      x = (1 - nx) * window.innerWidth;
       y = ny * window.innerHeight;
-      updateDot();
-    } catch {
-      // FaceDetector can throw intermittently; ignore.
+    } catch (err) {
+      console.warn('detectForVideo error', err);
+    } finally {
+      detecting = false;
     }
   }
 
@@ -160,9 +286,12 @@ export function createGazeTracker({
       sampleWebcam();
     }
 
-    // Hide the gaze dot under opaque UI hit-testing by temporarily
-    // disabling pointer events on the dot (already pointer-events: none).
-    const hit = pickSceneAtPoint(x, y);
+    const alpha = mode === 'webcam' ? 0.22 : 1;
+    smoothX += (x - smoothX) * alpha;
+    smoothY += (y - smoothY) * alpha;
+    updateDot();
+
+    const hit = pickSceneAtPoint(smoothX, smoothY);
     considerScene(hit, dt);
 
     rafId = requestAnimationFrame(tick);
@@ -175,7 +304,10 @@ export function createGazeTracker({
       const ok = await startWebcam();
       if (!ok) {
         mode = 'mouse';
-        setStatus('tracking: mouse');
+        forceMouseToggle(true);
+        setTimeout(() => {
+          if (mode === 'mouse') setStatus('tracking: mouse');
+        }, 2800);
       }
     } else {
       stopWebcam();
@@ -193,6 +325,8 @@ export function createGazeTracker({
   function stop() {
     window.removeEventListener('mousemove', onMouseMove);
     stopWebcam();
+    landmarker?.close?.();
+    landmarker = null;
     if (rafId) cancelAnimationFrame(rafId);
     gazeDot?.classList.remove('visible');
   }
@@ -202,7 +336,7 @@ export function createGazeTracker({
     stop,
     setMode,
     getMode: () => mode,
-    getPoint: () => ({ x, y }),
+    getPoint: () => ({ x: smoothX, y: smoothY }),
     getCurrentScene: () => currentScene,
   };
 }

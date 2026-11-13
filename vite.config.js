@@ -5,7 +5,11 @@ export default defineConfig(({ mode }) => {
   const apiKey = env.WLT_API_KEY || '';
 
   return {
+    optimizeDeps: {
+      include: ['@mediapipe/tasks-vision'],
+    },
     server: {
+      host: 'localhost',
       port: 5174,
       strictPort: true,
       open: false,
